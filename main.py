@@ -307,7 +307,7 @@ async def main():
 
     await userbot.start()
     await bot.start()
-    log.info("Kurigram fast chunk context started successfully.")
+    log.info("Bot started successfully.")
     await asyncio.Event().wait()
 
 
