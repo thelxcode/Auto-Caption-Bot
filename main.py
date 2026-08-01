@@ -114,19 +114,23 @@ async def delete_all_handler(client: Client, msg: Message):
         # Check if userbot is already in group
         ub = await client.get_chat_member(chat_id, userbot_id)
         if ub.status != ChatMemberStatus.ADMINISTRATOR and ub.status != ChatMemberStatus.OWNER:
-            log.info("Userbot is inside group but not an administrator. Promoting now...")
+            log.info("Userbot is inside group but NOT an administrator. Promoting and marking for demotion...")
             await client.promote_chat_member(
                 chat_id,
                 userbot_id,
                 ChatPrivileges(can_delete_messages=True)
             )
-            need_demote = True
+            need_demote = True  # Pehle normal member tha, isliye baad me disadmin hoga
+        else:
+            log.info("Userbot is already an admin/owner. Will NOT demote later.")
+            need_demote = False # Pehle se admin tha, isliye baad me touch nahi kiya jayega
+            
     except UserNotParticipant:
         log.info("Userbot is not in group. Executing automated invite join routine...")
         try:
             invite = await client.create_chat_invite_link(chat_id)
             await userbot.join_chat(invite.invite_link)
-            need_leave = True
+            need_leave = True  # Group me nahi tha, isliye baad me leave karega
             
             # Wait for Telegram peer infrastructure caches to properly sync
             await asyncio.sleep(2)
@@ -136,7 +140,7 @@ async def delete_all_handler(client: Client, msg: Message):
                 userbot_id,
                 ChatPrivileges(can_delete_messages=True)
             )
-            need_demote = True
+            need_demote = True # Join hone ke baad admin bana, isliye baad me disadmin hoga
             log.info("Userbot joined and promoted successfully.")
         except Exception as invite_err:
             log.error(f"Automated userbot setup failure: {invite_err}")
@@ -236,12 +240,14 @@ async def delete_all_handler(client: Client, msg: Message):
 
     if need_demote:
         try:
+            log.info("Cleaning up: Demoting userbot back to normal member...")
             await client.promote_chat_member(chat_id, userbot_id, ChatPrivileges())
         except Exception as e:
             log.error(f"Failed to demote userbot during cleanup: {e}")
 
     if need_leave:
         try:
+            log.info("Cleaning up: Making userbot leave the group...")
             await userbot.leave_chat(chat_id)
         except Exception as e:
             log.error(f"Failed to make userbot leave during cleanup: {e}")
