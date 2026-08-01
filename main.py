@@ -235,4 +235,4 @@ async def main():
     await bot.start()
     await asyncio.Event().wait()
 
-bot.run(main())
+bot.run()
