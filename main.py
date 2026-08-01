@@ -111,8 +111,10 @@ async def delete_all_handler(client: Client, msg: Message):
     need_demote = False
 
     try:
+        # Check if userbot is already in group
         ub = await client.get_chat_member(chat_id, userbot_id)
-        if ub.status != ChatMemberStatus.ADMINISTRATOR:
+        if ub.status != ChatMemberStatus.ADMINISTRATOR and ub.status != ChatMemberStatus.OWNER:
+            log.info("Userbot is inside group but not an administrator. Promoting now...")
             await client.promote_chat_member(
                 chat_id,
                 userbot_id,
@@ -120,14 +122,28 @@ async def delete_all_handler(client: Client, msg: Message):
             )
             need_demote = True
     except UserNotParticipant:
-        invite = await client.create_chat_invite_link(chat_id)
-        await userbot.join_chat(invite.invite_link)
-        await client.promote_chat_member(
-            chat_id,
-            userbot_id,
-            ChatPrivileges(can_delete_messages=True)
-        )
-        need_leave = True
+        log.info("Userbot is not in group. Executing automated invite join routine...")
+        try:
+            invite = await client.create_chat_invite_link(chat_id)
+            await userbot.join_chat(invite.invite_link)
+            need_leave = True
+            
+            # Wait for Telegram peer infrastructure caches to properly sync
+            await asyncio.sleep(2)
+            
+            await client.promote_chat_member(
+                chat_id,
+                userbot_id,
+                ChatPrivileges(can_delete_messages=True)
+            )
+            need_demote = True
+            log.info("Userbot joined and promoted successfully.")
+        except Exception as invite_err:
+            log.error(f"Automated userbot setup failure: {invite_err}")
+            return await status.edit(f"❌ Automated setup failed: {invite_err}")
+    except Exception as general_err:
+        log.error(f"Failed structural userbot validation check: {general_err}")
+        return await status.edit(f"❌ Structural setup verification error: {general_err}")
 
     # -------- LOAD PROGRESS -------- #
 
