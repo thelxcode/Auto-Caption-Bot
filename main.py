@@ -235,4 +235,5 @@ async def main():
     await bot.start()
     await asyncio.Event().wait()
 
-bot.run()
+if __name__ == "__main__":
+    asyncio.run(main())
